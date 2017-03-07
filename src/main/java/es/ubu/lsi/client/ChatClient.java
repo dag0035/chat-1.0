@@ -1,5 +1,5 @@
 package es.ubu.lsi.client;
 
-public class ChatClient {
+public interface ChatClient {
 
 }
