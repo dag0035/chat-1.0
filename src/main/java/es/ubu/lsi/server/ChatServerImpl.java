@@ -20,35 +20,41 @@ import es.ubu.lsi.common.ChatMessage;
 
 public class ChatServerImpl implements ChatServer {
 
-	public final int DEFAULT_PORT = 1500;
-	public int clientId;
+	private static int DEFAULT_PORT = 1500;
+	private int clientId = -1;
 
 	public SimpleDateFormat sdf;
 	/** Puerto por el que escucha el servidor. */
 	public static int port;
 	/** Si el servidor esta arrancado. */
 	public boolean alive;
+	protected ServerSocket serverSocket;
 
 	public List<ServerThreadForClient> clientesOnline;
 
-	public ChatServerImpl(int port) {
-		this.port = port;
+	public ChatServerImpl() {
+		this.port = DEFAULT_PORT;
 		this.alive = true;
 		this.clientesOnline = new ArrayList<ServerThreadForClient>();
-
+		
+		// Arranca el servidor.
 		startup();
 	}
 
 	public void startup() {
 		try {
-			while(alive){
-				ServerSocket serverSocket = new ServerSocket(port);
-	
+			serverSocket = new ServerSocket(port);
+			
+			while (alive) {
+				System.out.println("Esperando...");
 				Socket clientSocket = serverSocket.accept();
-	
-				// TODO leer el nick de usuario.
-	
-				clientesOnline.add(new ServerThreadForClient(0, ""));
+				System.out.println("Usuario intentando conectar...");
+				
+				// TODO leer nick, y validar
+				System.out.println("Cliente conectado!");
+				ServerThreadForClient serv = new ServerThreadForClient(clientId++, "hola", serverSocket);
+				clientesOnline.add(serv);
+				serv.start();
 			}
 		} catch (IOException e) {
 			System.out.println(
@@ -62,16 +68,21 @@ public class ChatServerImpl implements ChatServer {
 	}
 
 	public void broadcast(ChatMessage message) {
-		byte[] buf = new byte[256];
-
-		InetAddress group;
 		try {
-			group = InetAddress.getByName("230.0.0.1");
-			DatagramPacket packet = new DatagramPacket(buf, buf.length, group, 4446);
+			Socket clientSocket = serverSocket.accept();
 			
+			// DatagramPacket packet = new DatagramPacket(buf, buf.length);
+			// clientSocket.receive(packet);
+			//
+			// InetAddress address = packet.getAddress();
+			// int port = packet.getPort();
+			// packet = new DatagramPacket(buf, buf.length, address, port);
 			// socket.send(packet);
-		} catch (UnknownHostException e) {
-			e.printStackTrace();
+			
+
+		} catch (IOException e1) {
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
 		}
 	}
 
@@ -79,19 +90,13 @@ public class ChatServerImpl implements ChatServer {
 		// TODO elimina a un usuario de la lista
 	}
 
-	
 	public static void main(String[] args) {
-		System.out.println("Arranca el main");
-		
-        int portName = Integer.parseInt(args[0]);
-		
 		// Arranca el servidor.
-		if (args.length != 1) {
-			System.err.println("Usage: java EchoServer <port number>");
-			System.exit(1);
+		if (args.length != 0) {
+			System.err.println("Warning: No se necesitan parámetros.");
 		}
-
-		new ChatServerImpl(portName);
+		
+		new ChatServerImpl();
 	}
 
 }
@@ -100,36 +105,44 @@ class ServerThreadForClient extends Thread implements Runnable {
 	private int id;
 	private String nick;
 	protected DatagramSocket socket = null;
+	private ServerSocket serverSocket;
 
-	public ServerThreadForClient(int id, String nick) {
+	public ServerThreadForClient(int id, String nick, ServerSocket servSock) {
 		this.id = id;
 		this.nick = nick;
-
-		try {
-			socket = new DatagramSocket(4445);
-		} catch (SocketException e) {
-			e.printStackTrace();
-		}
+		this.serverSocket = servSock;
 	}
 
 	public void run() {
 		while (true) {
 			try {
-				byte[] buf = new byte[256];
+				System.out.println("Aqui llega y espera paciente");
+				Socket clientSocket = serverSocket.accept();
+				
+				System.out.println("Crea socket");
+				socket = new DatagramSocket(1501);
+				System.out.println("Lo creó!");
 
+				byte[] buf = new byte[256];
+				System.out.println("aja");
 				// receive request
 				DatagramPacket packet = new DatagramPacket(buf, buf.length);
+				System.out.println("clack");
 				socket.receive(packet);
 
+				PrintWriter out = new PrintWriter(clientSocket.getOutputStream(), true);
+				BufferedReader in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
+
 				// figure out response
-				String dString = null;
-
-				dString = "Hola";
-				buf = dString.getBytes();
-
-				InetAddress group = InetAddress.getByName("230.0.0.1");
-				DatagramPacket packetEnv = new DatagramPacket(buf, buf.length, group, 4446);
-				socket.send(packetEnv);
+				// String dString = null;
+				//
+				// dString = "Hola";
+				// buf = dString.getBytes();
+				// System.out.println("llega a mitad");
+				// InetAddress group = InetAddress.getByName("230.0.0.1");
+				// DatagramPacket packetEnv = new DatagramPacket(buf,
+				// buf.length, group, 1501);
+				// socket.send(packetEnv);
 
 				// send the response to the client at "address" and "port"
 				// InetAddress address = packet.getAddress();
