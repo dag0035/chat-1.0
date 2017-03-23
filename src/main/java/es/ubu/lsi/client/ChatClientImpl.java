@@ -3,7 +3,9 @@ package es.ubu.lsi.client;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
 import java.io.PrintStream;
+import java.io.PrintWriter;
 import java.net.DatagramPacket;
 import java.net.InetAddress;
 import java.net.Socket;
@@ -34,9 +36,36 @@ public class ChatClientImpl implements ChatClient {
 		// Recorre mensajes server
 		// Excepcion --> carryOn = false
 
+		BufferedReader in = null;
+		PrintWriter out = null;
+		
+		try{
+			//Conectar al servidor
+			Socket socket = new Socket(server, port);
+			in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+			out = new PrintWriter(new OutputStreamWriter(socket.getOutputStream()));
+			System.out.println("Conectado al servidor");
+		} catch(IOException ioe){
+			System.err.println("No se puede establecer conexión con " + server + ":" + port);
+			ioe.printStackTrace();
+		}
+		
+		new Thread(new ChatClientListener(out)).start();
+		
+		try {
+			String mensaje;
+			while ((mensaje = in.readLine()) != null) {
+				System.out.println("Echo: " + mensaje);
+			}
+		} catch (IOException ioe) {
+			System.err.println("Conexión perdida");
+			ioe.printStackTrace();
+		}
+		
+		/*
 		try {
 			System.out.println("Intentando conectar con el servidor...");
-			Socket socket = new Socket(server, port);
+			//Socket socket = new Socket(server, port);
 
 			
 			// outputStream = new DataOutputStream(socket.getOutputStream());
@@ -44,15 +73,14 @@ public class ChatClientImpl implements ChatClient {
 			// outputStream.writeObject(username);
 			// outputStream.flush();
 			// Id = inputStream.readInt();
-			PrintStream output = new PrintStream(socket.getOutputStream());
+			//PrintStream output = new PrintStream(socket.getOutputStream());
 			
 			BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
 			BufferedReader stdIn = new BufferedReader(new InputStreamReader(System.in));
 			System.out.println("Conectado al servidor!");
 
-			
-			while (stdIn.readLine() != null) {
-				System.out.println("Echo: " + in.read());
+			while (in.readLine() != null) {
+				System.out.println("Echo: " + in.readLine());
 			}
 		} catch (UnknownHostException e) {
 			System.err.println("Don't know about host " + server);
@@ -63,7 +91,7 @@ public class ChatClientImpl implements ChatClient {
 			carryOn = false;
 			System.exit(1);
 		}
-
+*/
 		return true;
 	}
 
@@ -99,9 +127,23 @@ public class ChatClientImpl implements ChatClient {
 
 class ChatClientListener implements Runnable {
 
+	private PrintWriter mOut;
+	
+	public ChatClientListener(PrintWriter aOut){
+		mOut = aOut;
+	}
+	
 	public void run() {
-		// TODO Auto-generated method stub
-
+		try{
+			BufferedReader in = new BufferedReader(new InputStreamReader(System.in));
+			//while (carryOn){
+				String message = in.readLine();
+				mOut.println(message);
+				mOut.flush();
+			//} 
+		}catch(IOException ioe){
+			System.err.println("Sin comunicación con el servidor...");
+		}
 	}
 
 }

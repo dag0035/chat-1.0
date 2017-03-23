@@ -133,6 +133,11 @@ class ServerThreadForClient extends Thread implements Runnable {
 				PrintWriter out = new PrintWriter(clientSocket.getOutputStream(), true);
 				BufferedReader in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
 
+				String mensaje;
+				while((mensaje = in.readLine()) != null){
+					out.println(mensaje);
+				}
+				
 				// figure out response
 				// String dString = null;
 				//
