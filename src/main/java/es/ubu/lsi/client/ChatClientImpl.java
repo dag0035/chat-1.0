@@ -3,6 +3,8 @@ package es.ubu.lsi.client;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.io.OutputStreamWriter;
 import java.io.PrintStream;
 import java.io.PrintWriter;
@@ -19,7 +21,10 @@ public class ChatClientImpl implements ChatClient {
 	private String username;
 	private int port;
 	private boolean carryOn = true;
-	private int id;
+	//private int id;
+	
+	ObjectInputStream in;
+	ObjectOutputStream out;
 
 	public ChatClientImpl(String server, int port, String username) {
 		this.server = server;
@@ -27,7 +32,7 @@ public class ChatClientImpl implements ChatClient {
 		this.username = username;
 		this.carryOn = true;
 
-		start();
+		//start();
 	}
 
 	public boolean start() {
@@ -50,7 +55,7 @@ public class ChatClientImpl implements ChatClient {
 			ioe.printStackTrace();
 		}
 		
-		new Thread(new ChatClientListener(out)).start();
+		new Thread(new ChatClientListener()).start();
 		
 		try {
 			String mensaje;
@@ -96,17 +101,44 @@ public class ChatClientImpl implements ChatClient {
 	}
 
 	public void sendMessage(ChatMessage msg) {
-		// TODO
+		try {
+			out.writeObject(msg);
+		} catch (IOException ioe) {
+			System.err.println("Error al enviar el mensaje");
+		}
 	}
 
 	public void disconnect() {
+		// creo que solo hay que hacer in.close() y out.close()
 		carryOn = false;
 	}
 
+	
+	public class ChatClientListener implements Runnable {
+
+		String mensaje;
+		
+		@Override
+		public void run() {
+			while (carryOn) {
+				try {
+					mensaje = (String) in.readObject();
+					System.out.println(mensaje);
+				} catch (ClassNotFoundException e) {
+					e.printStackTrace();
+				} catch (IOException ioe) {
+					ioe.printStackTrace();
+				}
+			}
+		}
+	}
+	
+	
 	public static void main(String[] args) {
 		String server = "";
 		String nick = "";
-
+		ChatClientImpl cliente;
+		
 		if (args.length == 1) {
 			server = "localhost";
 			nick = args[0];
@@ -120,30 +152,10 @@ public class ChatClientImpl implements ChatClient {
 		}
 		System.out.println("Usuario " + nick + " creado.");
 
-		new ChatClientImpl(server, 1500, nick);
-	}
-
-}
-
-class ChatClientListener implements Runnable {
-
-	private PrintWriter mOut;
-	
-	public ChatClientListener(PrintWriter aOut){
-		mOut = aOut;
+		cliente = new ChatClientImpl(server, 1500, nick);
+		cliente.start();
 	}
 	
-	public void run() {
-		try{
-			BufferedReader in = new BufferedReader(new InputStreamReader(System.in));
-			//while (carryOn){
-				String message = in.readLine();
-				mOut.println(message);
-				mOut.flush();
-			//} 
-		}catch(IOException ioe){
-			System.err.println("Sin comunicación con el servidor...");
-		}
-	}
-
 }
+
+
