@@ -1,17 +1,9 @@
 package es.ubu.lsi.client;
 
-import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
-import java.io.OutputStreamWriter;
-import java.io.PrintStream;
-import java.io.PrintWriter;
-import java.net.DatagramPacket;
-import java.net.InetAddress;
 import java.net.Socket;
-import java.net.UnknownHostException;
 
 import es.ubu.lsi.common.ChatMessage;
 
@@ -21,7 +13,7 @@ public class ChatClientImpl implements ChatClient {
 	private String username;
 	private int port;
 	private boolean carryOn = true;
-	//private int id;
+	private int id;
 	
 	ObjectInputStream in;
 	ObjectOutputStream out;
@@ -30,9 +22,8 @@ public class ChatClientImpl implements ChatClient {
 		this.server = server;
 		this.port = port;
 		this.username = username;
-		this.carryOn = true;
-
-		//start();
+		
+		carryOn = true;
 	}
 
 	public boolean start() {
@@ -41,62 +32,32 @@ public class ChatClientImpl implements ChatClient {
 		// Recorre mensajes server
 		// Excepcion --> carryOn = false
 
-		BufferedReader in = null;
-		PrintWriter out = null;
+		Socket socket = null;
 		
 		try{
 			//Conectar al servidor
-			Socket socket = new Socket(server, port);
-			in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-			out = new PrintWriter(new OutputStreamWriter(socket.getOutputStream()));
-			System.out.println("Conectado al servidor");
+			socket = new Socket(server, port);
 		} catch(IOException ioe){
 			System.err.println("No se puede establecer conexión con " + server + ":" + port);
 			ioe.printStackTrace();
 		}
 		
+		try {
+			out = new ObjectOutputStream(socket.getOutputStream());
+			in = new ObjectInputStream(socket.getInputStream());
+			System.out.println("Conectado al servidor");
+		} catch (Exception e) {
+			System.err.println("Error al obtener el socket");
+		}
+		
 		new Thread(new ChatClientListener()).start();
-		
-		try {
-			String mensaje;
-			while ((mensaje = in.readLine()) != null) {
-				System.out.println("Echo: " + mensaje);
-			}
-		} catch (IOException ioe) {
-			System.err.println("Conexión perdida");
-			ioe.printStackTrace();
-		}
-		
-		/*
-		try {
-			System.out.println("Intentando conectar con el servidor...");
-			//Socket socket = new Socket(server, port);
 
-			
-			// outputStream = new DataOutputStream(socket.getOutputStream());
-			// inputStream = new DataInputStream(socket.getInputStream());
-			// outputStream.writeObject(username);
-			// outputStream.flush();
-			// Id = inputStream.readInt();
-			//PrintStream output = new PrintStream(socket.getOutputStream());
-			
-			BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-			BufferedReader stdIn = new BufferedReader(new InputStreamReader(System.in));
-			System.out.println("Conectado al servidor!");
-
-			while (in.readLine() != null) {
-				System.out.println("Echo: " + in.readLine());
-			}
-		} catch (UnknownHostException e) {
-			System.err.println("Don't know about host " + server);
-			carryOn = false;
-			System.exit(1);
+		try {
+			//System.out.println(username);
+			out.writeObject(username);
 		} catch (IOException e) {
-			System.err.println("Couldn't get I/O for the connection to " + server);
-			carryOn = false;
-			System.exit(1);
+			System.out.println("Error al enviar username");
 		}
-*/
 		return true;
 	}
 
@@ -109,7 +70,14 @@ public class ChatClientImpl implements ChatClient {
 	}
 
 	public void disconnect() {
-		// creo que solo hay que hacer in.close() y out.close()
+		
+		try {
+			in.close();
+			out.close();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		
 		carryOn = false;
 	}
 
@@ -120,8 +88,12 @@ public class ChatClientImpl implements ChatClient {
 		
 		@Override
 		public void run() {
+			
+			//id = in.readObject();
+			
 			while (carryOn) {
 				try {
+					System.out.println(in);
 					mensaje = (String) in.readObject();
 					System.out.println(mensaje);
 				} catch (ClassNotFoundException e) {
@@ -157,5 +129,3 @@ public class ChatClientImpl implements ChatClient {
 	}
 	
 }
-
-
