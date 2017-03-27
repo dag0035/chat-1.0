@@ -3,6 +3,8 @@ package es.ubu.lsi.server;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.io.PrintWriter;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
@@ -36,7 +38,6 @@ public class ChatServerImpl implements ChatServer {
 		this.port = DEFAULT_PORT;
 		this.alive = true;
 		this.clientesOnline = new ArrayList<ServerThreadForClient>();
-		
 		// Arranca el servidor.
 		startup();
 	}
@@ -44,15 +45,15 @@ public class ChatServerImpl implements ChatServer {
 	public void startup() {
 		try {
 			serverSocket = new ServerSocket(port);
-			
+
 			while (alive) {
 				System.out.println("Esperando...");
 				Socket clientSocket = serverSocket.accept();
 				System.out.println("Usuario intentando conectar...");
-				
+
 				// TODO leer nick, y validar
 				System.out.println("Cliente conectado!");
-				ServerThreadForClient serv = new ServerThreadForClient(clientId++, "hola", serverSocket);
+				ServerThreadForClient serv = new ServerThreadForClient(clientId++, "hola", clientSocket);
 				clientesOnline.add(serv);
 				serv.start();
 			}
@@ -68,100 +69,118 @@ public class ChatServerImpl implements ChatServer {
 	}
 
 	public void broadcast(ChatMessage message) {
-		try {
-			Socket clientSocket = serverSocket.accept();
-			
-			// DatagramPacket packet = new DatagramPacket(buf, buf.length);
-			// clientSocket.receive(packet);
-			//
-			// InetAddress address = packet.getAddress();
-			// int port = packet.getPort();
-			// packet = new DatagramPacket(buf, buf.length, address, port);
-			// socket.send(packet);
-			
 
-		} catch (IOException e1) {
-			// TODO Auto-generated catch block
-			e1.printStackTrace();
-		}
+		String mensaje = message.getMessage();
+		System.out.println(mensaje);
+
+		// Recorrer todos los clientes y eniar con (?)writeObject() el mensaje a
+		// cada uno.
+
+		// DatagramPacket packet = new DatagramPacket(buf, buf.length);
+		// clientSocket.receive(packet);
+		//
+		// InetAddress address = packet.getAddress();
+		// int port = packet.getPort();
+		// packet = new DatagramPacket(buf, buf.length, address, port);
+		// socket.send(packet);
 	}
 
 	public void remove(int id) {
 		// TODO elimina a un usuario de la lista
 	}
 
-	public static void main(String[] args) {
-		// Arranca el servidor.
-		if (args.length != 0) {
-			System.err.println("Warning: No se necesitan parámetros.");
-		}
+	class ServerThreadForClient extends Thread implements Runnable {
 		
-		new ChatServerImpl();
-	}
+		Socket socket;
+		ObjectInputStream in;
+		ObjectOutputStream out;
+		
+		private int id;
+		private String nick;
+		//protected DatagramSocket socket = null;
+		//private ServerSocket serverSocket;
+		ChatMessage mensaje;
+		//String username;
 
-}
+		public ServerThreadForClient(int id, String nick, Socket socket) {
+			this.id = id;
+			this.nick = nick;
+			this.socket = socket;
+		}
 
-class ServerThreadForClient extends Thread implements Runnable {
-	private int id;
-	private String nick;
-	protected DatagramSocket socket = null;
-	private ServerSocket serverSocket;
+		public void run() {
+			while (true) {
 
-	public ServerThreadForClient(int id, String nick, ServerSocket servSock) {
-		this.id = id;
-		this.nick = nick;
-		this.serverSocket = servSock;
-	}
+					/*
+					 * System.out.println("Aqui llega y espera paciente");
+					 * Socket clientSocket = serverSocket.accept();
+					 * 
+					 * System.out.println("Crea socket"); socket = new
+					 * DatagramSocket(1501); System.out.println("Lo creó!");
+					 * 
+					 * byte[] buf = new byte[256]; System.out.println("aja"); //
+					 * receive request DatagramPacket packet = new
+					 * DatagramPacket(buf, buf.length);
+					 * System.out.println("clack"); socket.receive(packet);
+					 * 
+					 * 
+					 * PrintWriter out = new
+					 * PrintWriter(clientSocket.getOutputStream(), true);
+					 * BufferedReader in = new BufferedReader(new
+					 * InputStreamReader(clientSocket.getInputStream()));
+					 * 
+					 * String mensaje; while((mensaje = in.readLine()) != null){
+					 * out.println(mensaje); }
+					 */
 
-	public void run() {
-		while (true) {
-			try {
-				System.out.println("Aqui llega y espera paciente");
-				Socket clientSocket = serverSocket.accept();
-				
-				System.out.println("Crea socket");
-				socket = new DatagramSocket(1501);
-				System.out.println("Lo creó!");
+					// figure out response
+					// String dString = null;
+					//
+					// dString = "Hola";
+					// buf = dString.getBytes();
+					// System.out.println("llega a mitad");
+					// InetAddress group = InetAddress.getByName("230.0.0.1");
+					// DatagramPacket packetEnv = new DatagramPacket(buf,
+					// buf.length, group, 1501);
+					// socket.send(packetEnv);
 
-				byte[] buf = new byte[256];
-				System.out.println("aja");
-				// receive request
-				DatagramPacket packet = new DatagramPacket(buf, buf.length);
-				System.out.println("clack");
-				socket.receive(packet);
+					// send the response to the client at "address" and "port"
+					// InetAddress address = packet.getAddress();
+					// int port = packet.getPort();
+					// packet = new DatagramPacket(buf, buf.length, address,
+					// port);
+					// socket.send(packet);
 
-				PrintWriter out = new PrintWriter(clientSocket.getOutputStream(), true);
-				BufferedReader in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
-
-				String mensaje;
-				while((mensaje = in.readLine()) != null){
-					out.println(mensaje);
+				try {
+					mensaje = (ChatMessage) in.readObject();
+				} catch (ClassNotFoundException e1) {
+					// TODO Auto-generated catch block
+					e1.printStackTrace();
+				} catch (IOException e1) {
+					// TODO Auto-generated catch block
+					e1.printStackTrace();
 				}
 				
-				// figure out response
-				// String dString = null;
-				//
-				// dString = "Hola";
-				// buf = dString.getBytes();
-				// System.out.println("llega a mitad");
-				// InetAddress group = InetAddress.getByName("230.0.0.1");
-				// DatagramPacket packetEnv = new DatagramPacket(buf,
-				// buf.length, group, 1501);
-				// socket.send(packetEnv);
+				try {
+					mensaje.setMessage(nick + " : " + mensaje.getMessage());
+					broadcast(mensaje);
+				} catch (Exception e) {
+					e.printStackTrace();
+					// moreQuotes = false;
+				}
+				//socket.close();
+				// }
 
-				// send the response to the client at "address" and "port"
-				// InetAddress address = packet.getAddress();
-				// int port = packet.getPort();
-				// packet = new DatagramPacket(buf, buf.length, address, port);
-				// socket.send(packet);
-
-			} catch (IOException e) {
-				e.printStackTrace();
-				// moreQuotes = false;
 			}
-			socket.close();
 		}
-
 	}
 
+	public static void main(String[] args) {
+	// Arranca el servidor.
+	if (args.length != 0) {
+		System.err.println("Warning: No se necesitan parámetros.");
+	}
+	
+	new ChatServerImpl();
+}
 }
