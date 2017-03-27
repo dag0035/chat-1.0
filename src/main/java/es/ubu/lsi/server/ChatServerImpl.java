@@ -1,60 +1,58 @@
 package es.ubu.lsi.server;
 
-import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
-import java.io.PrintWriter;
-import java.net.DatagramPacket;
-import java.net.DatagramSocket;
-import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.net.SocketException;
-import java.net.UnknownHostException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.List;
 
 import es.ubu.lsi.common.ChatMessage;
 
 public class ChatServerImpl implements ChatServer {
 
+	protected int idCliente = 0;
+	
 	private static int DEFAULT_PORT = 1500;
-	private int clientId = -1;
-
 	public SimpleDateFormat sdf;
-	/** Puerto por el que escucha el servidor. */
-	public static int port;
-	/** Si el servidor esta arrancado. */
-	public boolean alive;
+
+	// Puerto por el que escucha el servidor.
+	private int port;
+
+	// Si el servidor esta arrancado. *
+	protected boolean alive;
+
+	// Socket del servidor
 	protected ServerSocket serverSocket;
 
+	// Lista de los clientes conectados
 	public List<ServerThreadForClient> clientesOnline;
 
 	public ChatServerImpl() {
 		this.port = DEFAULT_PORT;
 		this.alive = true;
 		this.clientesOnline = new ArrayList<ServerThreadForClient>();
-		// Arranca el servidor.
-		startup();
 	}
 
 	public void startup() {
+
+		alive = true;
+
 		try {
 			serverSocket = new ServerSocket(port);
 
 			while (alive) {
-				System.out.println("Esperando...");
+				System.out.println("Esperando en el puerto " + port + "...");
 				Socket clientSocket = serverSocket.accept();
-				System.out.println("Usuario intentando conectar...");
-
-				// TODO leer nick, y validar
-				System.out.println("Cliente conectado!");
-				ServerThreadForClient serv = new ServerThreadForClient(clientId++, "hola", clientSocket);
+				ServerThreadForClient serv = new ServerThreadForClient(clientSocket);
 				clientesOnline.add(serv);
+				// System.out.println("Cliente conectado!");
+				System.out.println("Clientes conectados: ");
+				for (ServerThreadForClient client : clientesOnline) {
+					System.out.println("  > " + client.nick);
+				}
 				serv.start();
 			}
 		} catch (IOException e) {
@@ -62,125 +60,106 @@ public class ChatServerImpl implements ChatServer {
 					"Exception caught when trying to listen on port " + port + " or listening for a connection");
 			System.out.println(e.getMessage());
 		}
+
+		try {
+			serverSocket.close();
+		} catch (IOException e) {
+			System.err.println("Error en el cierre del socket.");
+			e.printStackTrace();
+		}
+
 	}
 
 	public void shutdown() {
 		// TODO no hacer
+		// alive = false;
 	}
 
 	public void broadcast(ChatMessage message) {
 
 		String mensaje = message.getMessage();
-		System.out.println(mensaje);
+		System.out.println("Broadcast --> " + mensaje);
 
-		// Recorrer todos los clientes y eniar con (?)writeObject() el mensaje a
-		// cada uno.
+		for (ServerThreadForClient client : clientesOnline) {
+			try {
+				client.out.writeObject(mensaje);
+			} catch (IOException e) {
+				System.err.println("Error de broadcast.");
+				e.printStackTrace();
+			}
+		}
 
-		// DatagramPacket packet = new DatagramPacket(buf, buf.length);
-		// clientSocket.receive(packet);
-		//
-		// InetAddress address = packet.getAddress();
-		// int port = packet.getPort();
-		// packet = new DatagramPacket(buf, buf.length, address, port);
-		// socket.send(packet);
 	}
 
 	public void remove(int id) {
 		// TODO elimina a un usuario de la lista
 	}
 
-	class ServerThreadForClient extends Thread implements Runnable {
-		
+	class ServerThreadForClient extends Thread {
+
 		Socket socket;
 		ObjectInputStream in;
 		ObjectOutputStream out;
-		
+
 		private int id;
 		private String nick;
-		//protected DatagramSocket socket = null;
-		//private ServerSocket serverSocket;
 		ChatMessage mensaje;
-		//String username;
 
-		public ServerThreadForClient(int id, String nick, Socket socket) {
-			this.id = id;
-			this.nick = nick;
-			this.socket = socket;
+		/**
+		 * Constructor
+		 * 
+		 * @param socketCliente
+		 */
+		public ServerThreadForClient(Socket socketCliente) {
+			socket = socketCliente;
+			id = idCliente++;
+			try {
+				in = new ObjectInputStream(socket.getInputStream());
+				out = new ObjectOutputStream(socket.getOutputStream());
+				nick = (String) in.readObject();
+				System.out.println("Conectado el usuario " + nick + " con id " + id);
+				// out.writeObject(id);
+			} catch (IOException e) {
+				e.printStackTrace();
+			} catch (ClassNotFoundException e) {
+				e.printStackTrace();
+			}
+
 		}
 
+		@Override
 		public void run() {
-			while (true) {
+			try {
 
-					/*
-					 * System.out.println("Aqui llega y espera paciente");
-					 * Socket clientSocket = serverSocket.accept();
-					 * 
-					 * System.out.println("Crea socket"); socket = new
-					 * DatagramSocket(1501); System.out.println("Lo creó!");
-					 * 
-					 * byte[] buf = new byte[256]; System.out.println("aja"); //
-					 * receive request DatagramPacket packet = new
-					 * DatagramPacket(buf, buf.length);
-					 * System.out.println("clack"); socket.receive(packet);
-					 * 
-					 * 
-					 * PrintWriter out = new
-					 * PrintWriter(clientSocket.getOutputStream(), true);
-					 * BufferedReader in = new BufferedReader(new
-					 * InputStreamReader(clientSocket.getInputStream()));
-					 * 
-					 * String mensaje; while((mensaje = in.readLine()) != null){
-					 * out.println(mensaje); }
-					 */
+				mensaje = (ChatMessage) in.readObject();
+				System.out.println("El siguiente mensaje ha llegado al servidor: " + mensaje.getMessage());
 
-					// figure out response
-					// String dString = null;
-					//
-					// dString = "Hola";
-					// buf = dString.getBytes();
-					// System.out.println("llega a mitad");
-					// InetAddress group = InetAddress.getByName("230.0.0.1");
-					// DatagramPacket packetEnv = new DatagramPacket(buf,
-					// buf.length, group, 1501);
-					// socket.send(packetEnv);
-
-					// send the response to the client at "address" and "port"
-					// InetAddress address = packet.getAddress();
-					// int port = packet.getPort();
-					// packet = new DatagramPacket(buf, buf.length, address,
-					// port);
-					// socket.send(packet);
-
-				try {
-					mensaje = (ChatMessage) in.readObject();
-				} catch (ClassNotFoundException e1) {
-					// TODO Auto-generated catch block
-					e1.printStackTrace();
-				} catch (IOException e1) {
-					// TODO Auto-generated catch block
-					e1.printStackTrace();
-				}
-				
-				try {
-					mensaje.setMessage(nick + " : " + mensaje.getMessage());
-					broadcast(mensaje);
-				} catch (Exception e) {
-					e.printStackTrace();
-					// moreQuotes = false;
-				}
-				//socket.close();
-				// }
-
+			} catch (ClassNotFoundException e1) {
+				e1.printStackTrace();
+			} catch (IOException e1) {
+				e1.printStackTrace();
 			}
+
+			try {
+
+				mensaje.setMessage(nick + ": " + mensaje.getMessage());
+				broadcast(mensaje);
+
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+
 		}
 	}
 
 	public static void main(String[] args) {
-	// Arranca el servidor.
-	if (args.length != 0) {
-		System.err.println("Warning: No se necesitan parámetros.");
+		if (args.length != 0) {
+			System.err.println("Warning: No se necesitan parámetros.");
+		}
+
+		// Llamamos al constructor
+		ChatServerImpl server = new ChatServerImpl();
+		// Arranca el servidor.
+		server.startup();
 	}
-	
-	new ChatServerImpl();
-}
 }
