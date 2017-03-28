@@ -35,22 +35,23 @@ public class ChatClientImpl implements ChatClient {
 		try {
 			// Conectar al servidor
 			socket = new Socket(server, port);
+
+			// input y output
+			out = new ObjectOutputStream(socket.getOutputStream());
+			in = new ObjectInputStream(socket.getInputStream());
+			System.out.println("Conectado al servidor como " + username);
+			
+			new Thread(new ChatClientListener()).start();
+			
+			
 		} catch (IOException ioe) {
 			System.err.println("No se puede establecer conexión con " + server + ":" + port);
 			ioe.printStackTrace();
 			carryOn = false;
-		}
-
-		try {
-			out = new ObjectOutputStream(socket.getOutputStream());
-			in = new ObjectInputStream(socket.getInputStream());
-			System.out.println("Conectado al servidor como " + username);
 		} catch (Exception e) {
 			System.err.println("Error al obtener el socket");
 			carryOn = false;
 		}
-
-		new Thread(new ChatClientListener()).start();
 
 		try {
 			out.writeObject(username);
@@ -70,18 +71,17 @@ public class ChatClientImpl implements ChatClient {
 		}
 	}
 
+	//TODO Comentar
 	public void disconnect() {
-
-		// TODO: Probar si funciona bien.
-		
 		try {
 			in.close();
 			out.close();
+			socket.close();
+	
+			carryOn = false;
 		} catch (IOException e) {
 			e.printStackTrace();
-		}
-
-		carryOn = false;
+		}		
 	}
 
 	public class ChatClientListener implements Runnable {
@@ -94,11 +94,12 @@ public class ChatClientImpl implements ChatClient {
 				try {
 					mensaje = (String) in.readObject();
 					System.out.println(mensaje);
-					System.out.print("> "); // TODO: Arreglar el prompt para que escriba en la misma linea
+					System.out.print("> ");
 				} catch (ClassNotFoundException e) {
 					e.printStackTrace();
 				} catch (IOException ioe) {
-					ioe.printStackTrace();
+					disconnect();//Nos aseguramos que en caso de que salte esta excepción se desconecta.
+					System.out.println(username + " te has desconectado.");
 				}
 			}
 		}
@@ -128,28 +129,47 @@ public class ChatClientImpl implements ChatClient {
 
 		cliente = new ChatClientImpl(server, 1500, nick);
 		cliente.start();
-		System.out.print("> "); // TODO: Arreglar el prompt para que escriba en la misma linea
+		System.out.print("> ");
 		
 		// ---------------------------------------------------------//
 		// Leer lo que escribimos y guardarlo en la variable mensaje
 		while (online) {
-			// Poner online a False con la opcion LOGOUT
-
-			// TODO: Hay que mirar si el mensaje empieza por BAN o LOGOUT para saber que tipo de mesaje es...
 			String mensaje = null;
-	
 			
 			try {
 				BufferedReader stdIn = new BufferedReader(new InputStreamReader(System.in));
 				mensaje = stdIn.readLine();
-
+			
+				String command = checkIfMessageIsCommand(mensaje);
+				
+				switch (command) {
+				case "BAN":
+					//TODO Ban a un usuario
+					break;
+				case "LOGOUT":
+					cliente.sendMessage(new ChatMessage(cliente.id, ChatMessage.MessageType.LOGOUT, command));
+					online = false;
+					cliente.disconnect();
+					break;
+				default:
+					cliente.sendMessage(new ChatMessage(cliente.id, ChatMessage.MessageType.MESSAGE, mensaje));		
+				}
 			} catch (Exception e) {
 				// TODO: handle exception
 			}
 			// System.out.println("Prueba ----------> " + mensaje);
-			cliente.sendMessage(new ChatMessage(cliente.id, ChatMessage.MessageType.MESSAGE, mensaje));
-
+			
 		}
+	}
+	
+	private static String checkIfMessageIsCommand(String message){
+		String command = "";
+		if (message.length() >= 6){
+			command = message.substring(0, 6);
+		} else if(message.length() >= 3){
+			command = message.substring(0, 3);
+		}
+		return command;
 	}
 
 }

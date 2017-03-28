@@ -7,6 +7,7 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 
 import es.ubu.lsi.common.ChatMessage;
@@ -28,12 +29,13 @@ public class ChatServerImpl implements ChatServer {
 	protected ServerSocket serverSocket;
 
 	// Lista de los clientes conectados
-	public List<ServerThreadForClient> clientesOnline;
+	public HashMap<Integer, ServerThreadForClient> clientesOnline;
+	// public List<ServerThreadForClient> clientesOnline;
 
 	public ChatServerImpl() {
 		this.port = DEFAULT_PORT;
 		this.alive = true;
-		this.clientesOnline = new ArrayList<ServerThreadForClient>();
+		this.clientesOnline = new HashMap<Integer,ServerThreadForClient>();
 	}
 
 	public void startup() {
@@ -41,7 +43,6 @@ public class ChatServerImpl implements ChatServer {
 		alive = true;
 
 		try {
-			
 			serverSocket = new ServerSocket(port);
 
 			System.out.println("Esperando en el puerto " + port + "...");
@@ -49,10 +50,11 @@ public class ChatServerImpl implements ChatServer {
 			while (alive) {
 				Socket clientSocket = serverSocket.accept();
 				ServerThreadForClient serv = new ServerThreadForClient(clientSocket);
-				clientesOnline.add(serv);
+				clientesOnline.put(idCliente,serv);
+				
 				// System.out.println("Cliente conectado!");
 				System.out.println("Clientes conectados: ");
-				for (ServerThreadForClient client : clientesOnline) {
+				for (ServerThreadForClient client : clientesOnline.values()) {
 					System.out.println("  > " + client.nick);
 				}
 				serv.start();
@@ -77,12 +79,13 @@ public class ChatServerImpl implements ChatServer {
 		// alive = false;
 	}
 
+	// TODO falta comentar
 	public void broadcast(ChatMessage message) {
-
 		String mensaje = message.getMessage();
 		System.out.println("Broadcast --> " + mensaje);
 
-		for (ServerThreadForClient client : clientesOnline) {
+		//TODO debería devolver un tipo ChatMessage, así podemos controlar los baneos en el cliente, que es más fácil.
+		for (ServerThreadForClient client : clientesOnline.values()) {
 			try {
 				client.out.writeObject(mensaje);
 			} catch (IOException e) {
@@ -92,11 +95,10 @@ public class ChatServerImpl implements ChatServer {
 		}
 
 	}
-
+	
+	//TODO falta comentar.
 	public void remove(int id) {
-		// TODO elimina a un usuario de la lista
-		//for-each de todos los clientes
-		//el id que coincida --> lista.remove(cliente)
+		clientesOnline.remove(id);//Ver por que no elimina del hasmap.
 	}
 
 	class ServerThreadForClient extends Thread {
@@ -124,6 +126,7 @@ public class ChatServerImpl implements ChatServer {
 				System.out.println("Conectado el usuario " + nick + " con id " + id);
 				// out.writeObject(id);
 			} catch (IOException e) {
+				System.out.println("Error en el hilo servidor. IO.");
 				e.printStackTrace();
 			} catch (ClassNotFoundException e) {
 				e.printStackTrace();
@@ -133,37 +136,42 @@ public class ChatServerImpl implements ChatServer {
 
 		@Override
 		public void run() {
-
-			// Poner online a false con logout...
 			boolean online = true;
 
 			while (online) {
 				try {
-
 					mensaje = (ChatMessage) in.readObject();
 					// System.out.println("El siguiente mensaje ha llegado al servidor: " + mensaje.getMessage());
+					
+					// TODO: Switch según el tipo de mensaje. Falta el ban...
+					// OPCION 3: Baneo
+					System.out.println(mensaje.getType().toString());
+					
+					switch (mensaje.getType()) {
+					case LOGOUT:
+						System.out.println("> Usuario desconectado: " + nick);
+						remove(mensaje.getId()); //TODO ver por que no lo elimina.
+						online=false;
+						break;
+					case MESSAGE:
+						mensaje.setMessage("> " + nick + ": " + mensaje.getMessage());
+						broadcast(mensaje);
+						break;
+					
+					default:
+						break;
+					}
+
 
 				} catch (ClassNotFoundException e1) {
 					e1.printStackTrace();
 				} catch (IOException e1) {
 					e1.printStackTrace();
-				}
-
-				try {
-
-					// TODO: Switch según el tipo de mensaje
-
-					// OPCION 1: Mandar mensaje
-					mensaje.setMessage("> " + nick + ": " + mensaje.getMessage());
-					broadcast(mensaje);
-					// OPCION 2: Logout
-					// OPCION 3: Baneo
-
 				} catch (Exception e) {
 					e.printStackTrace();
 				}
 
-			}
+			}//fin while
 		}
 	}
 
