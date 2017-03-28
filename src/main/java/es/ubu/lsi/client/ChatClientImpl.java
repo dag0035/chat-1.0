@@ -32,10 +32,6 @@ public class ChatClientImpl implements ChatClient {
 
 	public boolean start() {
 
-		// TODO arrancar hilo cliente:
-		// Recorre mensajes server
-		// Excepcion --> carryOn = false
-
 		try {
 			// Conectar al servidor
 			socket = new Socket(server, port);
@@ -57,7 +53,6 @@ public class ChatClientImpl implements ChatClient {
 		new Thread(new ChatClientListener()).start();
 
 		try {
-			// System.out.println(username);
 			out.writeObject(username);
 		} catch (IOException e) {
 			System.out.println("Error al enviar username");
@@ -77,6 +72,8 @@ public class ChatClientImpl implements ChatClient {
 
 	public void disconnect() {
 
+		// TODO: Probar si funciona bien.
+		
 		try {
 			in.close();
 			out.close();
@@ -93,9 +90,6 @@ public class ChatClientImpl implements ChatClient {
 
 		@Override
 		public void run() {
-
-			// id = in.readObject();
-
 			while (carryOn) {
 				try {
 					mensaje = (String) in.readObject();
@@ -127,7 +121,9 @@ public class ChatClientImpl implements ChatClient {
 			System.err.println("Usage: java ChatClientImpl <nick name>");
 			System.exit(1);
 		}
-		System.out.println("Usuario " + nick + " creado.");
+		
+		//System.out.println("Usuario " + nick + " creado.");
+		System.out.println("------------- CHAT -------------");
 
 		cliente = new ChatClientImpl(server, 1500, nick);
 		cliente.start();
@@ -135,10 +131,11 @@ public class ChatClientImpl implements ChatClient {
 		// ---------------------------------------------------------//
 		// Leer lo que escribimos y guardarlo en la variable mensaje
 		while (online) {
+			// Poner online a False con la opcion LOGOUT
 
-			// Poner online a False con logout
+			// TODO: Hay que mirar si el mensaje empieza por BAN o LOGOUT para saber que tipo de mesaje es...
 			String mensaje = null;
-			System.out.println("> ");
+			System.out.println("> "); // TODO: Arreglar el prompt para que escriba en la misma linea
 
 			try {
 
@@ -148,7 +145,7 @@ public class ChatClientImpl implements ChatClient {
 			} catch (Exception e) {
 				// TODO: handle exception
 			}
-			//System.out.println("Prueba ----------> " + mensaje);
+			// System.out.println("Prueba ----------> " + mensaje);
 			cliente.sendMessage(new ChatMessage(cliente.id, ChatMessage.MessageType.MESSAGE, mensaje));
 		}
 	}

@@ -14,7 +14,7 @@ import es.ubu.lsi.common.ChatMessage;
 public class ChatServerImpl implements ChatServer {
 
 	protected int idCliente = 0;
-	
+
 	private static int DEFAULT_PORT = 1500;
 	public SimpleDateFormat sdf;
 
@@ -41,10 +41,12 @@ public class ChatServerImpl implements ChatServer {
 		alive = true;
 
 		try {
+			
 			serverSocket = new ServerSocket(port);
 
+			System.out.println("Esperando en el puerto " + port + "...");
+			
 			while (alive) {
-				System.out.println("Esperando en el puerto " + port + "...");
 				Socket clientSocket = serverSocket.accept();
 				ServerThreadForClient serv = new ServerThreadForClient(clientSocket);
 				clientesOnline.add(serv);
@@ -93,6 +95,8 @@ public class ChatServerImpl implements ChatServer {
 
 	public void remove(int id) {
 		// TODO elimina a un usuario de la lista
+		//for-each de todos los clientes
+		//el id que coincida --> lista.remove(cliente)
 	}
 
 	class ServerThreadForClient extends Thread {
@@ -129,26 +133,37 @@ public class ChatServerImpl implements ChatServer {
 
 		@Override
 		public void run() {
-			try {
 
-				mensaje = (ChatMessage) in.readObject();
-				System.out.println("El siguiente mensaje ha llegado al servidor: " + mensaje.getMessage());
+			// Poner online a false con logout...
+			boolean online = true;
 
-			} catch (ClassNotFoundException e1) {
-				e1.printStackTrace();
-			} catch (IOException e1) {
-				e1.printStackTrace();
+			while (online) {
+				try {
+
+					mensaje = (ChatMessage) in.readObject();
+					// System.out.println("El siguiente mensaje ha llegado al servidor: " + mensaje.getMessage());
+
+				} catch (ClassNotFoundException e1) {
+					e1.printStackTrace();
+				} catch (IOException e1) {
+					e1.printStackTrace();
+				}
+
+				try {
+
+					// TODO: Switch según el tipo de mensaje
+
+					// OPCION 1: Mandar mensaje
+					mensaje.setMessage("> " + nick + ": " + mensaje.getMessage());
+					broadcast(mensaje);
+					// OPCION 2: Logout
+					// OPCION 3: Baneo
+
+				} catch (Exception e) {
+					e.printStackTrace();
+				}
+
 			}
-
-			try {
-
-				mensaje.setMessage(nick + ": " + mensaje.getMessage());
-				broadcast(mensaje);
-
-			} catch (Exception e) {
-				e.printStackTrace();
-			}
-
 		}
 	}
 
@@ -157,9 +172,9 @@ public class ChatServerImpl implements ChatServer {
 			System.err.println("Warning: No se necesitan parámetros.");
 		}
 
-		// Llamamos al constructor
+		// Creamos un nuevo objeto servidor
 		ChatServerImpl server = new ChatServerImpl();
-		// Arranca el servidor.
+		// Arrancamos el servidor.
 		server.startup();
 	}
 }
