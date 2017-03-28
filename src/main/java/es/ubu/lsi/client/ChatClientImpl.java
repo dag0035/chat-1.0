@@ -94,6 +94,7 @@ public class ChatClientImpl implements ChatClient {
 				try {
 					mensaje = (String) in.readObject();
 					System.out.println(mensaje);
+					System.out.print("> "); // TODO: Arreglar el prompt para que escriba en la misma linea
 				} catch (ClassNotFoundException e) {
 					e.printStackTrace();
 				} catch (IOException ioe) {
@@ -127,7 +128,8 @@ public class ChatClientImpl implements ChatClient {
 
 		cliente = new ChatClientImpl(server, 1500, nick);
 		cliente.start();
-
+		System.out.print("> "); // TODO: Arreglar el prompt para que escriba en la misma linea
+		
 		// ---------------------------------------------------------//
 		// Leer lo que escribimos y guardarlo en la variable mensaje
 		while (online) {
@@ -135,10 +137,9 @@ public class ChatClientImpl implements ChatClient {
 
 			// TODO: Hay que mirar si el mensaje empieza por BAN o LOGOUT para saber que tipo de mesaje es...
 			String mensaje = null;
-			System.out.println("> "); // TODO: Arreglar el prompt para que escriba en la misma linea
-
+	
+			
 			try {
-
 				BufferedReader stdIn = new BufferedReader(new InputStreamReader(System.in));
 				mensaje = stdIn.readLine();
 
@@ -147,6 +148,7 @@ public class ChatClientImpl implements ChatClient {
 			}
 			// System.out.println("Prueba ----------> " + mensaje);
 			cliente.sendMessage(new ChatMessage(cliente.id, ChatMessage.MessageType.MESSAGE, mensaje));
+
 		}
 	}
 
