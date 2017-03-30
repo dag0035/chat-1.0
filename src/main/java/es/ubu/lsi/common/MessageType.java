@@ -13,6 +13,8 @@ public enum MessageType {
 	SHUTDOWN,
 	/** Ban user. */
 	BAN,
+	/** Unban user. */
+	UNBAN,
 	/** Logout client. */
 	LOGOUT;		
 }
