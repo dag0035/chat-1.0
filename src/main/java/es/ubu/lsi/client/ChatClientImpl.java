@@ -40,10 +40,9 @@ public class ChatClientImpl implements ChatClient {
 			out = new ObjectOutputStream(socket.getOutputStream());
 			in = new ObjectInputStream(socket.getInputStream());
 			System.out.println("Conectado al servidor como " + username);
-			
+
 			new Thread(new ChatClientListener()).start();
-			
-			
+
 		} catch (IOException ioe) {
 			System.err.println("No se puede establecer conexión con " + server + ":" + port);
 			ioe.printStackTrace();
@@ -71,17 +70,17 @@ public class ChatClientImpl implements ChatClient {
 		}
 	}
 
-	//TODO Comentar
+	// TODO Comentar
 	public void disconnect() {
 		try {
 			in.close();
 			out.close();
 			socket.close();
-	
+
 			carryOn = false;
 		} catch (IOException e) {
 			e.printStackTrace();
-		}		
+		}
 	}
 
 	public class ChatClientListener implements Runnable {
@@ -98,7 +97,8 @@ public class ChatClientImpl implements ChatClient {
 				} catch (ClassNotFoundException e) {
 					e.printStackTrace();
 				} catch (IOException ioe) {
-					disconnect();//Nos aseguramos que en caso de que salte esta excepción se desconecta.
+					disconnect();// Nos aseguramos que en caso de que salte esta
+									// excepción se desconecta.
 					System.out.println(username + " te has desconectado.");
 				}
 			}
@@ -123,50 +123,53 @@ public class ChatClientImpl implements ChatClient {
 			System.err.println("Usage: java ChatClientImpl <nick name>");
 			System.exit(1);
 		}
-		
-		//System.out.println("Usuario " + nick + " creado.");
+
+		// System.out.println("Usuario " + nick + " creado.");
 		System.out.println("------------- CHAT -------------");
 
 		cliente = new ChatClientImpl(server, 1500, nick);
 		cliente.start();
 		System.out.print("> ");
-		
+
 		// ---------------------------------------------------------//
 		// Leer lo que escribimos y guardarlo en la variable mensaje
 		while (online) {
 			String mensaje = null;
-			
+
 			try {
+				// Lee por teclado.
 				BufferedReader stdIn = new BufferedReader(new InputStreamReader(System.in));
 				mensaje = stdIn.readLine();
-			
-				String command = checkIfMessageIsCommand(mensaje);
-				
+
+				String command = parseMensajeToCommand(mensaje);
+
 				switch (command) {
 				case "BAN":
-					//TODO Ban a un usuario
+					// TODO Ban a un usuario suponiendo que el mensaje sea de
+					// tipo ban, el mensaje será el usuario baneado.
+					cliente.sendMessage(new ChatMessage(cliente.id, ChatMessage.MessageType.BAN, mensaje));
 					break;
 				case "LOGOUT":
-					cliente.sendMessage(new ChatMessage(cliente.id, ChatMessage.MessageType.LOGOUT, command));
+					cliente.sendMessage(new ChatMessage(cliente.id, ChatMessage.MessageType.LOGOUT, ""));
 					online = false;
 					cliente.disconnect();
 					break;
 				default:
-					cliente.sendMessage(new ChatMessage(cliente.id, ChatMessage.MessageType.MESSAGE, mensaje));		
+					cliente.sendMessage(new ChatMessage(cliente.id, ChatMessage.MessageType.MESSAGE, mensaje));
 				}
 			} catch (Exception e) {
 				// TODO: handle exception
 			}
 			// System.out.println("Prueba ----------> " + mensaje);
-			
+
 		}
 	}
-	
-	private static String checkIfMessageIsCommand(String message){
+
+	private static String parseMensajeToCommand(String message) {
 		String command = "";
-		if (message.length() >= 6){
+		if (message.length() >= 6) {
 			command = message.substring(0, 6);
-		} else if(message.length() >= 3){
+		} else if (message.length() >= 3) {
 			command = message.substring(0, 3);
 		}
 		return command;

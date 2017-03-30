@@ -9,6 +9,7 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import es.ubu.lsi.common.ChatMessage;
 
@@ -29,13 +30,16 @@ public class ChatServerImpl implements ChatServer {
 	protected ServerSocket serverSocket;
 
 	// Lista de los clientes conectados
-	public HashMap<Integer, ServerThreadForClient> clientesOnline;
-	// public List<ServerThreadForClient> clientesOnline;
-
+	private Map<Integer, ServerThreadForClient> clientesOnline;
+	
+	private List<Ban> baneos;
+	
+	
 	public ChatServerImpl() {
 		this.port = DEFAULT_PORT;
 		this.alive = true;
 		this.clientesOnline = new HashMap<Integer,ServerThreadForClient>();
+		this.baneos = new ArrayList<Ban>();
 	}
 
 	public void startup() {
@@ -85,6 +89,7 @@ public class ChatServerImpl implements ChatServer {
 		System.out.println("Broadcast --> " + mensaje);
 
 		//TODO debería devolver un tipo ChatMessage, así podemos controlar los baneos en el cliente, que es más fácil.
+		//TODO hay que filtrar que usuarios tienen a que usuarios baneados, para no mandarles ni recibir nada de ellos.
 		for (ServerThreadForClient client : clientesOnline.values()) {
 			try {
 				client.out.writeObject(mensaje);
@@ -137,7 +142,7 @@ public class ChatServerImpl implements ChatServer {
 		@Override
 		public void run() {
 			boolean online = true;
-
+			int id;
 			while (online) {
 				try {
 					mensaje = (ChatMessage) in.readObject();
@@ -148,6 +153,28 @@ public class ChatServerImpl implements ChatServer {
 					System.out.println(mensaje.getType().toString());
 					
 					switch (mensaje.getType()) {
+					case BAN:
+						id = comprobarSiExisteUsuario(mensaje.getMessage());
+						if (id == -1){
+						// TODO Si el nick existe, se devuelve su id, si no existe se devuelve -1
+						// TODO si devuelve -1 Contesta al cliente con "el usuario x no existe"
+						} else {
+							Ban b = new Ban(mensaje.getId(), id);
+							baneos.add(b);
+						}
+							// TODO si existe, se guarda en baneo en una lista. 
+						break;
+					case UNBAN:
+						id = comprobarSiExisteUsuario(mensaje.getMessage());
+						if (id == -1){
+							// TODO Si el nick existe, se devuelve su id, si no existe se devuelve -1
+							// TODO si devuelve -1 Contesta al cliente con "el usuario x no existe"
+						} else {
+							Ban b = new Ban(mensaje.getId(), id);
+							baneos.remove(b);
+						}
+							// TODO si existe, se guarda en baneo en una lista. 
+						break;
 					case LOGOUT:
 						System.out.println("> Usuario desconectado: " + nick);
 						remove(mensaje.getId()); //TODO ver por que no lo elimina.
@@ -173,8 +200,24 @@ public class ChatServerImpl implements ChatServer {
 
 			}//fin while
 		}
+		
+		//TODO Comentar
+		private int comprobarSiExisteUsuario(String nick){
+			for (Map.Entry<Integer, ServerThreadForClient> entryClient : clientesOnline.entrySet()) {
+				if(entryClient.getValue().getNick().equals(nick)){
+					return entryClient.getKey();
+				}
+			}
+			return -1;
+		}
+		
+		//TODO Comentar
+		public String getNick(){
+			return nick;
+		}
 	}
 
+	
 	public static void main(String[] args) {
 		if (args.length != 0) {
 			System.err.println("Warning: No se necesitan parámetros.");
