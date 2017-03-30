@@ -83,6 +83,10 @@ public class ChatClientImpl implements ChatClient {
 		}
 	}
 
+	public Integer getId() {
+		return id;
+	}
+
 	public class ChatClientListener implements Runnable {
 
 		String mensaje;
@@ -141,13 +145,13 @@ public class ChatClientImpl implements ChatClient {
 				BufferedReader stdIn = new BufferedReader(new InputStreamReader(System.in));
 				mensaje = stdIn.readLine();
 
-				String command = parseMensajeToCommand(mensaje);
+				String[] command = parseMensajeToCommand(mensaje);
 
-				switch (command) {
+				switch (command[0]) {
 				case "BAN":
 					// TODO Ban a un usuario suponiendo que el mensaje sea de
 					// tipo ban, el mensaje será el usuario baneado.
-					cliente.sendMessage(new ChatMessage(cliente.id, ChatMessage.MessageType.BAN, mensaje));
+					cliente.sendMessage(new ChatMessage(cliente.id, ChatMessage.MessageType.BAN, command[1]));
 					break;
 				case "LOGOUT":
 					cliente.sendMessage(new ChatMessage(cliente.id, ChatMessage.MessageType.LOGOUT, ""));
@@ -160,19 +164,20 @@ public class ChatClientImpl implements ChatClient {
 			} catch (Exception e) {
 				// TODO: handle exception
 			}
-			// System.out.println("Prueba ----------> " + mensaje);
 
 		}
 	}
 
-	private static String parseMensajeToCommand(String message) {
-		String command = "";
-		if (message.length() >= 6) {
-			command = message.substring(0, 6);
-		} else if (message.length() >= 3) {
-			command = message.substring(0, 3);
-		}
-		return command;
+	/**
+	 * Método que lee el mensaje a mandar y selecciona la primera palabra como
+	 * comando.
+	 * 
+	 * @param message
+	 * @return String[] en el que el primer valor es el comando, y el segundo el
+	 *         mesaje.
+	 */
+	private static String[] parseMensajeToCommand(String message) {
+		return message.split(" ", 2);
 	}
 
 }

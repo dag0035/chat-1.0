@@ -31,15 +31,14 @@ public class ChatServerImpl implements ChatServer {
 
 	// Lista de los clientes conectados
 	private Map<Integer, ServerThreadForClient> clientesOnline;
-	
-	private List<Ban> baneos;
-	
-	
+
+	// Mapa de los clientes y sus baneados. Clave: id. Valores: lista de ids.
+	private Map<Integer, List<Integer>> baneos = new HashMap<Integer, List<Integer>>();
+
 	public ChatServerImpl() {
 		this.port = DEFAULT_PORT;
 		this.alive = true;
-		this.clientesOnline = new HashMap<Integer,ServerThreadForClient>();
-		this.baneos = new ArrayList<Ban>();
+		this.clientesOnline = new HashMap<Integer, ServerThreadForClient>();
 	}
 
 	public void startup() {
@@ -50,16 +49,19 @@ public class ChatServerImpl implements ChatServer {
 			serverSocket = new ServerSocket(port);
 
 			System.out.println("Esperando en el puerto " + port + "...");
-			
+
 			while (alive) {
 				Socket clientSocket = serverSocket.accept();
 				ServerThreadForClient serv = new ServerThreadForClient(clientSocket);
-				clientesOnline.put(idCliente,serv);
-				
-				// System.out.println("Cliente conectado!");
+
+				// TODO: Deberiamos hacr que no se puedan conectar dos con el
+				// mismo nick
+
+				clientesOnline.put(idCliente, serv);
+
 				System.out.println("Clientes conectados: ");
 				for (ServerThreadForClient client : clientesOnline.values()) {
-					System.out.println("  > " + client.nick);
+					System.out.println("  > " + client.getNick());
 				}
 				serv.start();
 			}
@@ -85,25 +87,41 @@ public class ChatServerImpl implements ChatServer {
 
 	// TODO falta comentar
 	public void broadcast(ChatMessage message) {
+
 		String mensaje = message.getMessage();
 		System.out.println("Broadcast --> " + mensaje);
 
-		//TODO debería devolver un tipo ChatMessage, así podemos controlar los baneos en el cliente, que es más fácil.
-		//TODO hay que filtrar que usuarios tienen a que usuarios baneados, para no mandarles ni recibir nada de ellos.
+		// TODO Falta que el que banea no reciba del baneado.
 		for (ServerThreadForClient client : clientesOnline.values()) {
-			try {
-				client.out.writeObject(mensaje);
-			} catch (IOException e) {
-				System.err.println("Error de broadcast.");
-				e.printStackTrace();
+
+			List<Integer> baneados = baneos.get(client.id);
+			System.out.println("Baneados de " + client.getNick() + ": " + baneados);
+
+			if (baneados.contains(message.getId())) {
+
+				System.out.println("Está baneado, no mandamos nada...");
+
+			} else {
+
+				try {
+					client.out.writeObject(mensaje);
+				} catch (IOException e) {
+					System.err.println("Error de broadcast.");
+					e.printStackTrace();
+				}
+
 			}
 		}
 
 	}
-	
-	//TODO falta comentar.
+
+	// TODO falta comentar.
 	public void remove(int id) {
-		clientesOnline.remove(id);//Ver por que no elimina del hasmap.
+		clientesOnline.remove(id);// Ver por que no elimina del hashmap.
+	}
+
+	public Map<Integer, ServerThreadForClient> getClientesOnline() {
+		return clientesOnline;
 	}
 
 	class ServerThreadForClient extends Thread {
@@ -123,13 +141,18 @@ public class ChatServerImpl implements ChatServer {
 		 */
 		public ServerThreadForClient(Socket socketCliente) {
 			socket = socketCliente;
-			id = idCliente++;
+			baneos.put(idCliente, new ArrayList<Integer>());
+
 			try {
+
 				in = new ObjectInputStream(socket.getInputStream());
 				out = new ObjectOutputStream(socket.getOutputStream());
+
 				nick = (String) in.readObject();
+
 				System.out.println("Conectado el usuario " + nick + " con id " + id);
-				// out.writeObject(id);
+				System.out.println(baneos);
+
 			} catch (IOException e) {
 				System.out.println("Error en el hilo servidor. IO.");
 				e.printStackTrace();
@@ -137,87 +160,98 @@ public class ChatServerImpl implements ChatServer {
 				e.printStackTrace();
 			}
 
+			id = idCliente++;
+
 		}
 
 		@Override
 		public void run() {
 			boolean online = true;
-			int id;
 			while (online) {
 				try {
 					mensaje = (ChatMessage) in.readObject();
-					// System.out.println("El siguiente mensaje ha llegado al servidor: " + mensaje.getMessage());
-					
-					// TODO: Switch según el tipo de mensaje. Falta el ban...
-					// OPCION 3: Baneo
-					System.out.println(mensaje.getType().toString());
-					
+					int idBaneado;
+					int idSender;
+					// System.out.println(mensaje.getType().toString());
+
 					switch (mensaje.getType()) {
+
 					case BAN:
-						id = comprobarSiExisteUsuario(mensaje.getMessage());
-						if (id == -1){
-						// TODO Si el nick existe, se devuelve su id, si no existe se devuelve -1
-						// TODO si devuelve -1 Contesta al cliente con "el usuario x no existe"
+						idBaneado = comprobarSiExisteUsuario(mensaje.getMessage());
+						idSender = mensaje.getId(); // TODO: Ver porque siempre
+													// devuelve 0.
+						if (idBaneado == -1) {
+
+							System.out.println("El nick introducido no coincide con ningún cliente conectado.");
+
 						} else {
-							Ban b = new Ban(mensaje.getId(), id);
-							baneos.add(b);
+
+							System.out.println("ID DEL BANEADOR: " + idSender);
+							List<Integer> baneados = baneos.get(idSender);
+							baneados.add(idBaneado);
+							baneos.put(idSender, baneados);
+							System.out
+									.println("El usuario " + mensaje.getMessage() + " ha sido baneado correctamente.");
 						}
-							// TODO si existe, se guarda en baneo en una lista. 
 						break;
+
 					case UNBAN:
-						id = comprobarSiExisteUsuario(mensaje.getMessage());
-						if (id == -1){
-							// TODO Si el nick existe, se devuelve su id, si no existe se devuelve -1
-							// TODO si devuelve -1 Contesta al cliente con "el usuario x no existe"
+						idBaneado = comprobarSiExisteUsuario(mensaje.getMessage());
+						idSender = mensaje.getId();
+						if (idBaneado == -1) {
+
+							System.out.println("El nick introducido no coincide con ningún cliente conectado.");
+
 						} else {
-							Ban b = new Ban(mensaje.getId(), id);
-							baneos.remove(b);
+
+							List<Integer> baneados = baneos.get(idSender);
+							baneados.remove(idBaneado);
+							baneos.put(idSender, baneados);
+							System.out.println(
+									"El usuario " + mensaje.getMessage() + " ha sido desbaneado correctamente.");
 						}
-							// TODO si existe, se guarda en baneo en una lista. 
 						break;
+
 					case LOGOUT:
+						idSender = mensaje.getId();
 						System.out.println("> Usuario desconectado: " + nick);
-						remove(mensaje.getId()); //TODO ver por que no lo elimina.
-						online=false;
+						remove(idSender); // TODO No lo elimina
+						online = false;
 						break;
+
 					case MESSAGE:
 						mensaje.setMessage("> " + nick + ": " + mensaje.getMessage());
 						broadcast(mensaje);
 						break;
-					
+
 					default:
 						break;
 					}
 
-
-				} catch (ClassNotFoundException e1) {
-					e1.printStackTrace();
-				} catch (IOException e1) {
-					e1.printStackTrace();
 				} catch (Exception e) {
 					e.printStackTrace();
 				}
 
-			}//fin while
+			} // fin while
 		}
-		
-		//TODO Comentar
-		private int comprobarSiExisteUsuario(String nick){
+
+		// TODO Comentar
+		private int comprobarSiExisteUsuario(String nick) {
 			for (Map.Entry<Integer, ServerThreadForClient> entryClient : clientesOnline.entrySet()) {
-				if(entryClient.getValue().getNick().equals(nick)){
+				if (entryClient.getValue().getNick().equals(nick)) {
 					return entryClient.getKey();
 				}
 			}
 			return -1;
 		}
-		
-		//TODO Comentar
-		public String getNick(){
+
+		// TODO Comentar
+		public String getNick() {
 			return nick;
 		}
+
 	}
 
-	
 	public static void main(String[] args) {
 		if (args.length != 0) {
 			System.err.println("Warning: No se necesitan parámetros.");
