@@ -25,7 +25,9 @@ public class ChatMessage implements Serializable {
 		/** Message. */
 		MESSAGE,
 		/** Shutdown server. */
-		SHUTDOWN,		
+		SHUTDOWN,
+		/** Ban user. */
+		BAN,
 		/** Logout client. */
 		LOGOUT;		
 	}
