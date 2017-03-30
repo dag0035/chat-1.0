@@ -8,14 +8,16 @@ import java.io.ObjectOutputStream;
 import java.net.Socket;
 
 import es.ubu.lsi.common.ChatMessage;
+import es.ubu.lsi.common.ChatMessage.MessageType;
 
 public class ChatClientImpl implements ChatClient {
 
+	private static int id = -1;
 	private String server;
 	private String username;
 	private int port;
 	private boolean carryOn = true;
-	private int id;
+	private int idCliente;
 
 	ObjectInputStream in;
 	ObjectOutputStream out;
@@ -23,6 +25,7 @@ public class ChatClientImpl implements ChatClient {
 	Socket socket = null;
 
 	public ChatClientImpl(String server, int port, String username) {
+		this.idCliente = id++;
 		this.server = server;
 		this.port = port;
 		this.username = username;
@@ -53,7 +56,11 @@ public class ChatClientImpl implements ChatClient {
 		}
 
 		try {
-			out.writeObject(username);
+			ChatMessage message = new ChatMessage(idCliente, MessageType.MESSAGE, username);
+			// Pasamos el nombre de usuario
+			//out.writeObject(username);
+			out.writeObject(message);
+			
 		} catch (IOException e) {
 			System.out.println("Error al enviar username");
 			carryOn = false;
@@ -84,7 +91,7 @@ public class ChatClientImpl implements ChatClient {
 	}
 
 	public Integer getId() {
-		return id;
+		return idCliente;
 	}
 
 	public class ChatClientListener implements Runnable {

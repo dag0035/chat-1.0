@@ -14,9 +14,7 @@ import java.util.Map;
 import es.ubu.lsi.common.ChatMessage;
 
 public class ChatServerImpl implements ChatServer {
-
-	protected int idCliente = 0;
-
+	
 	private static int DEFAULT_PORT = 1500;
 	public SimpleDateFormat sdf;
 
@@ -57,7 +55,7 @@ public class ChatServerImpl implements ChatServer {
 				// TODO: Deberiamos hacr que no se puedan conectar dos con el
 				// mismo nick
 
-				clientesOnline.put(idCliente, serv);
+				clientesOnline.put(serv.id, serv);
 
 				System.out.println("Clientes conectados: ");
 				for (ServerThreadForClient client : clientesOnline.values()) {
@@ -141,15 +139,15 @@ public class ChatServerImpl implements ChatServer {
 		 */
 		public ServerThreadForClient(Socket socketCliente) {
 			socket = socketCliente;
-			baneos.put(idCliente, new ArrayList<Integer>());
-
+			
 			try {
-
 				in = new ObjectInputStream(socket.getInputStream());
 				out = new ObjectOutputStream(socket.getOutputStream());
 
-				nick = (String) in.readObject();
-
+				mensaje = (ChatMessage) in.readObject();
+				nick = mensaje.getMessage();
+				id = mensaje.getId();
+				
 				System.out.println("Conectado el usuario " + nick + " con id " + id);
 				System.out.println(baneos);
 
@@ -160,8 +158,7 @@ public class ChatServerImpl implements ChatServer {
 				e.printStackTrace();
 			}
 
-			id = idCliente++;
-
+			baneos.put(id, new ArrayList<Integer>());
 		}
 
 		@Override
