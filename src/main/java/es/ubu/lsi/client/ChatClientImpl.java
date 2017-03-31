@@ -12,7 +12,6 @@ import es.ubu.lsi.common.ChatMessage.MessageType;
 
 public class ChatClientImpl implements ChatClient {
 
-	// private int id = -1;
 	private String server;
 	private String username;
 	private int port;
@@ -26,7 +25,6 @@ public class ChatClientImpl implements ChatClient {
 
 	public ChatClientImpl(String server, int port, String username) {
 
-		// this.idCliente = id++;
 		this.idCliente = username.hashCode();
 		this.server = server;
 		this.port = port;
@@ -130,11 +128,8 @@ public class ChatClientImpl implements ChatClient {
 			System.exit(1);
 		}
 
-		// System.out.println("Usuario " + nick + " creado.");
 		System.out.println("------------- CHAT -------------");
-
 		cliente = new ChatClientImpl(server, 1500, nick);
-		System.out.println("IS SEGUN EL CLIENTE: " + cliente.idCliente);
 		cliente.start();
 		System.out.print("> ");
 
@@ -150,13 +145,14 @@ public class ChatClientImpl implements ChatClient {
 
 				String[] command = parseMensajeToCommand(mensaje);
 
-				// TODO: Añadir UNBAN si es necesario
-				// No se si hay que hacerlo o no. Mirar enunciado.
 				switch (command[0]) {
-				case "BAN":
+				case "ban":
 					cliente.sendMessage(new ChatMessage(cliente.idCliente, ChatMessage.MessageType.BAN, command[1]));
 					break;
-				case "LOGOUT":
+				case "unban":
+					cliente.sendMessage(new ChatMessage(cliente.idCliente, ChatMessage.MessageType.UNBAN, command[1]));
+					break;
+				case "logout":
 					cliente.sendMessage(new ChatMessage(cliente.idCliente, ChatMessage.MessageType.LOGOUT, ""));
 					online = false;
 					cliente.disconnect();

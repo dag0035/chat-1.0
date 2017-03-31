@@ -15,9 +15,6 @@ import es.ubu.lsi.common.ChatMessage;
 
 public class ChatServerImpl implements ChatServer {
 
-	// TODO: Manejar la excepción de cuando un cliente se desconecta por fuerza
-	// bruta.
-
 	private static int DEFAULT_PORT = 1500;
 	public SimpleDateFormat sdf;
 
@@ -53,22 +50,26 @@ public class ChatServerImpl implements ChatServer {
 
 			while (alive) {
 				Socket clientSocket = serverSocket.accept();
-				ServerThreadForClient serv = new ServerThreadForClient(clientSocket);
+				ServerThreadForClient clientThread = new ServerThreadForClient(clientSocket);
 
-				// TODO: NO PUEDE HABER DOS NICK IGUALES
+				// Si ya existe un mismo id en la lista d clientes, salta
+				// excepción.
+				if (clientesOnline.containsKey(clientThread.id))
+					throw new Exception();
 
-				clientesOnline.put(serv.id, serv);
+				clientesOnline.put(clientThread.id, clientThread);
 
 				System.out.println("Clientes conectados: ");
 				for (ServerThreadForClient client : clientesOnline.values()) {
 					System.out.println("  > " + client.getNick());
 				}
-				serv.start();
+				clientThread.start();
 			}
-		} catch (IOException e) {
+		} catch (IOException ioe) {
 			System.out.println(
 					"Exception caught when trying to listen on port " + port + " or listening for a connection");
-			System.out.println(e.getMessage());
+		} catch (Exception e) {
+			System.err.println("Se ha intentado crear un cliente con un nombre ya existente");
 		}
 
 		try {
@@ -91,25 +92,19 @@ public class ChatServerImpl implements ChatServer {
 		int idSender = message.getId();
 		// System.out.println("Broadcast --> " + mensaje);
 
-		// TODO Falta que el que banea no reciba del baneado.
 		for (ServerThreadForClient client : clientesOnline.values()) {
 
 			List<Integer> baneados = baneos.get(client.id);
-			System.out.println("Baneados de " + client.getNick() + ": " + baneados);
 
 			if (baneados.contains(idSender)) {
-
 				System.out.println("Está baneado, no mandamos nada...");
-
 			} else {
-
 				try {
 					client.out.writeObject(mensaje);
 				} catch (IOException e) {
 					System.err.println("Error de broadcast.");
 					e.printStackTrace();
 				}
-
 			}
 		}
 
@@ -149,7 +144,8 @@ public class ChatServerImpl implements ChatServer {
 				nick = mensaje.getMessage();
 				id = mensaje.getId();
 
-				System.out.println("Conectado el usuario " + nick + " con id " + id);
+				// System.out.println("Conectado el usuario " + nick + " con id
+				// " + id);
 
 			} catch (IOException e) {
 				System.out.println("Error en el hilo servidor. IO.");
@@ -180,12 +176,11 @@ public class ChatServerImpl implements ChatServer {
 
 						} else {
 
-							System.out.println("ID DEL BANEADOR: " + idSender);
 							List<Integer> baneados = baneos.get(idSender);
 							baneados.add(idBaneado);
 							baneos.put(idSender, baneados);
-							System.out
-									.println("El usuario " + mensaje.getMessage() + " ha sido baneado correctamente.");
+							System.out.println(
+									"El usuario " + nick + " ha baneado correctamente a " + mensaje.getMessage());
 						}
 						break;
 
@@ -200,7 +195,7 @@ public class ChatServerImpl implements ChatServer {
 							baneados.remove(idBaneado);
 							baneos.put(idSender, baneados);
 							System.out.println(
-									"El usuario " + mensaje.getMessage() + " ha sido desbaneado correctamente.");
+									"El usuario " + nick + " ha desbaneado correctamente a " + mensaje.getMessage());
 						}
 						break;
 
@@ -220,7 +215,9 @@ public class ChatServerImpl implements ChatServer {
 					}
 
 				} catch (Exception e) {
-					e.printStackTrace();
+					System.err.println("El usuario " + nick + " se ha desconectado de forma inesperada.");
+					remove(mensaje.getId());
+					online = false;
 				}
 
 			} // fin while
