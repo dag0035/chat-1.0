@@ -10,21 +10,44 @@ import java.net.Socket;
 import es.ubu.lsi.common.ChatMessage;
 import es.ubu.lsi.common.ChatMessage.MessageType;
 
+/**
+ * Clase ChatClienteImpl que implementa la interfaz ChatClient.
+ * 
+ * @author Diego Martín Pérez
+ * @author Daniel Arnaiz Gutiérrez
+ *
+ */
 public class ChatClientImpl implements ChatClient {
-
+	/** Servidor al que se conecta. */
 	private String server;
+	/** Nombre de usuario */
 	private String username;
+	/** Puerto en el que esta el servidor. */
 	private int port;
+	/** Si esta conectado al servidor. */
 	private boolean carryOn = true;
+	/** Id de cliente */
 	private int idCliente;
 
-	ObjectInputStream in;
-	ObjectOutputStream out;
+	/** Objeto de recepción de datos del servidor. */
+	private ObjectInputStream in;
+	/** Objeto para enviar datos al servidor. */
+	private ObjectOutputStream out;
 
-	Socket socket = null;
+	/** Soket en el cliente. */
+	private Socket socket = null;
 
+	/**
+	 * Constructor del cliente. Se inicializan las variables necesarias.
+	 * 
+	 * @param server
+	 *            Direccion del server al que se conecta.
+	 * @param port
+	 *            Del servidor al que se conecta.
+	 * @param username
+	 *            Nombre del usuario.
+	 */
 	public ChatClientImpl(String server, int port, String username) {
-
 		this.idCliente = username.hashCode();
 		this.server = server;
 		this.port = port;
@@ -33,6 +56,11 @@ public class ChatClientImpl implements ChatClient {
 		carryOn = true;
 	}
 
+	/**
+	 * Inicia la conexión con el servidor.
+	 * 
+	 * @return true o false en función de si esta o no conectado.
+	 */
 	public boolean start() {
 
 		try {
@@ -67,6 +95,12 @@ public class ChatClientImpl implements ChatClient {
 		return true;
 	}
 
+	/**
+	 * Envia un mensaje al servidor.
+	 * 
+	 * @param msg
+	 *            Mensaje que envia al servidor.
+	 */
 	public void sendMessage(ChatMessage msg) {
 		try {
 			out.writeObject(msg);
@@ -75,6 +109,9 @@ public class ChatClientImpl implements ChatClient {
 		}
 	}
 
+	/**
+	 * El usuario se desconecta del servidor.
+	 */
 	public void disconnect() {
 		try {
 			in.close();
@@ -87,9 +124,13 @@ public class ChatClientImpl implements ChatClient {
 		}
 	}
 
+	/**
+	 * InnerClass que crea un hilo a parte, para el control de lo que se recibe
+	 * del servidor.
+	 */
 	public class ChatClientListener implements Runnable {
-
-		String mensaje;
+		/** Mensaje que se recibe desde el servidor. */
+		private String mensaje;
 
 		@Override
 		public void run() {
@@ -109,6 +150,18 @@ public class ChatClientImpl implements ChatClient {
 		}
 	}
 
+	/**
+	 * Main del cliente que lo ejecuta.
+	 * 
+	 * En el main, se ejecuta un bucle que se queda a la espera de recibir
+	 * contenido por teclado, y despues lo manda al servidor.
+	 * 
+	 * @param args
+	 *            Argumentos que se le pasan al cliente. - Si solo se le pasa un
+	 *            argumento es el nick, y por defecto la dirección es localhost.
+	 *            - Si se le pasan dos argumentos el primero es la dirección y
+	 *            el segundo el nick.
+	 */
 	public static void main(String[] args) {
 		String server = "";
 		String nick = "";
@@ -131,13 +184,13 @@ public class ChatClientImpl implements ChatClient {
 		System.out.println("------------- CHAT -------------");
 		cliente = new ChatClientImpl(server, 1500, nick);
 		cliente.start();
-		System.out.print("> ");
 
 		// ---------------------------------------------------------//
 		// Leer lo que escribimos y guardarlo en la variable mensaje
 		while (online) {
 			String mensaje = null;
 
+			System.out.print("> ");
 			try {
 				// Lee por teclado.
 				BufferedReader stdIn = new BufferedReader(new InputStreamReader(System.in));
@@ -171,7 +224,7 @@ public class ChatClientImpl implements ChatClient {
 	 * Método que lee el mensaje a mandar y selecciona la primera palabra como
 	 * comando.
 	 * 
-	 * @param message
+	 * @param message Mensaje a parsear para comprobar si es un comando.
 	 * @return String[] en el que el primer valor es el comando, y el segundo el
 	 *         mensaje.
 	 */

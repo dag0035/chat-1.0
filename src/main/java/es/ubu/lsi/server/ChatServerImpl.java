@@ -5,7 +5,6 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -13,34 +12,48 @@ import java.util.Map;
 
 import es.ubu.lsi.common.ChatMessage;
 
+/**
+ * Clase que implementa la interfaz ChatServer. Se encarga de la ejecución de
+ * Servidor.
+ * 
+ * @author Diego Martín Pérez
+ * @author Daniel Arnaiz Gutiérrez
+ */
 public class ChatServerImpl implements ChatServer {
-
+	/** Puerto por defecto */
 	private static int DEFAULT_PORT = 1500;
-	public SimpleDateFormat sdf;
 
-	// Puerto por el que escucha el servidor.
+	/** Puerto por el que escucha el servidor. */
 	private int port;
 
-	// Si el servidor esta arrancado.
-	protected boolean alive;
+	/** Boleana que indica si el servidor esta activo o no. */
+	private boolean alive;
 
-	// Socket del servidor
-	protected ServerSocket serverSocket;
+	/** Socket para el servidor */
+	private ServerSocket serverSocket;
 
-	// Lista de los clientes conectados
+	/** Lista de clientes conectados. */
 	private Map<Integer, ServerThreadForClient> clientesOnline;
 
 	// Mapa de los clientes y sus baneados. Clave: id. Valores: lista de ids.
+	/** Mapa de clientes y baneos. */
 	private Map<Integer, List<Integer>> baneos = new HashMap<Integer, List<Integer>>();
 
+	/**
+	 * Constructor. ChatServerImpl(). Constructor de la implementación del
+	 * servidor.
+	 */
 	public ChatServerImpl() {
 		this.port = DEFAULT_PORT;
 		this.alive = true;
 		this.clientesOnline = new HashMap<Integer, ServerThreadForClient>();
 	}
 
+	/**
+	 * Startup(). Método que comienza el servidor y mantiene el bucle a la
+	 * espera de peticiones de clientes.
+	 */
 	public void startup() {
-
 		alive = true;
 
 		try {
@@ -72,6 +85,7 @@ public class ChatServerImpl implements ChatServer {
 			System.err.println("Se ha intentado crear un cliente con un nombre ya existente");
 		}
 
+		// Cierra la conexión.
 		try {
 			serverSocket.close();
 		} catch (IOException e) {
@@ -81,11 +95,21 @@ public class ChatServerImpl implements ChatServer {
 
 	}
 
+	/**
+	 * shutdown() Cierra la conexión del servidor.
+	 */
 	public void shutdown() {
 		// No hacer
 		// alive = false;
 	}
 
+	/**
+	 * broadcast(ChatMessage). Hace broadcast de un mensaje a todos los usuarios
+	 * conectados, a excepción de los usuarios baneados.
+	 * 
+	 * @param ChatMessage
+	 *            message. El mensaje a hacer broadcast.
+	 */
 	public void broadcast(ChatMessage message) {
 
 		String mensaje = message.getMessage();
@@ -93,9 +117,7 @@ public class ChatServerImpl implements ChatServer {
 		// System.out.println("Broadcast --> " + mensaje);
 
 		for (ServerThreadForClient client : clientesOnline.values()) {
-
 			List<Integer> baneados = baneos.get(client.id);
-
 			if (baneados.contains(idSender)) {
 				System.out.println("Está baneado, no mandamos nada...");
 			} else {
@@ -110,28 +132,51 @@ public class ChatServerImpl implements ChatServer {
 
 	}
 
+	/**
+	 * remove(int id). Elimina un usuario de la lista de usuarios conectados al
+	 * Servidor.
+	 * 
+	 * @param id
+	 *            del usuario que se desconecta.
+	 */
 	public void remove(int id) {
 		clientesOnline.remove(id);// Ver por que no elimina del hashmap.
 	}
 
+	/**
+	 * GetClientesOnline() Obtiene la lista de clientes online.
+	 * 
+	 * @return Lista de clientes online.
+	 */
 	public Map<Integer, ServerThreadForClient> getClientesOnline() {
 		return clientesOnline;
 	}
 
+	/**
+	 * InnerClass que crea un nuevo hilo por cada nuevo cliente que se conecta
+	 * al servidor, y se queda a la espera de mensajes.
+	 */
 	class ServerThreadForClient extends Thread {
 
+		/** Socket del cliente pasado desde el servidor. */
 		Socket socket;
+		/** Objeto para leer lo que el cliente mande. */
 		ObjectInputStream in;
+		/** Objeto para mandarle al cliente. */
 		ObjectOutputStream out;
 
+		/** Id del cliente */
 		private int id;
+		/** Nick del cliente */
 		private String nick;
+		/** Mensaje para la comunicación entre ambos. */
 		ChatMessage mensaje;
 
 		/**
-		 * Constructor
+		 * Constructor de hilos del servidor.
 		 * 
 		 * @param socketCliente
+		 *            El Socket del cliente mandado por el servidor.
 		 */
 		public ServerThreadForClient(Socket socketCliente) {
 			socket = socketCliente;
@@ -158,6 +203,7 @@ public class ChatServerImpl implements ChatServer {
 
 		}
 
+		/** Metodo runnable ejecuta el hilo. */
 		@Override
 		public void run() {
 			boolean online = true;
@@ -171,11 +217,8 @@ public class ChatServerImpl implements ChatServer {
 
 					case BAN:
 						if (idBaneado == -1) {
-
 							System.out.println("El nick introducido no coincide con ningún cliente conectado.");
-
 						} else {
-
 							List<Integer> baneados = baneos.get(idSender);
 							baneados.add(idBaneado);
 							baneos.put(idSender, baneados);
@@ -183,14 +226,10 @@ public class ChatServerImpl implements ChatServer {
 									"El usuario " + nick + " ha baneado correctamente a " + mensaje.getMessage());
 						}
 						break;
-
 					case UNBAN:
 						if (idBaneado == -1) {
-
 							System.out.println("El nick introducido no coincide con ningún cliente conectado.");
-
 						} else {
-
 							List<Integer> baneados = baneos.get(idSender);
 							baneados.remove(idBaneado);
 							baneos.put(idSender, baneados);
@@ -198,18 +237,15 @@ public class ChatServerImpl implements ChatServer {
 									"El usuario " + nick + " ha desbaneado correctamente a " + mensaje.getMessage());
 						}
 						break;
-
 					case LOGOUT:
 						System.out.println("> Usuario desconectado: " + nick);
 						remove(idSender);
 						online = false;
 						break;
-
 					case MESSAGE:
-						mensaje.setMessage("> " + nick + ": " + mensaje.getMessage());
+						mensaje.setMessage(nick + ": " + mensaje.getMessage());
 						broadcast(mensaje);
 						break;
-
 					default:
 						break;
 					}
@@ -223,6 +259,7 @@ public class ChatServerImpl implements ChatServer {
 			} // fin while
 		}
 
+		/** Comprueba si existe un usuario en el servidor. */
 		private int comprobarSiExisteUsuario(String nick) {
 			for (Map.Entry<Integer, ServerThreadForClient> entryClient : clientesOnline.entrySet()) {
 				ServerThreadForClient cliente = entryClient.getValue();
@@ -232,13 +269,18 @@ public class ChatServerImpl implements ChatServer {
 			}
 			return -1;
 		}
-
+		
+		/** Obtiene el nick del usuario. */
 		public String getNick() {
 			return nick;
 		}
 
 	}
 
+	/**
+	 * Main del servidor.
+	 * @param args. Al servidor no se le pasan parametros de entrada.
+	 */
 	public static void main(String[] args) {
 		if (args.length != 0) {
 			System.err.println("Warning: No se necesitan parámetros.");
