@@ -1,0 +1,52 @@
+<project name="Chat-1.0 Sockets." default="compile" basedir=".">
+	<description>Práctica 01 - Sistemas Distribuidos.</description>
+	<!--  Properties of the project...  -->
+	<!--  Dir properties  -->
+	<property name="src.dir" value="${basedir}/src"/>
+	<property name="build.dir" value="${basedir}/build"/>
+	<property name="doc.dir" value="${basedir}/doc"/>
+	<!--
+	 ==================== Definition of CLASSPATH ====================================== 
+	-->
+	<path id="compile.classpath">
+		<pathelement location="${build.dir}"/>
+	</path>
+	<!--
+	 =============== Development Targets ================================= 
+	-->
+	<target name="all" description="Development targets." depends="clean, prepare, compile, javadoc"/>
+	<!--
+	 ==================== Prepare Target ==================================== 
+	-->
+	<target description="Create directories" name="prepare">
+		<mkdir dir="${build.dir}"/>
+		<mkdir dir="${doc.dir}"/>
+	</target>
+	<!--
+	 ==================== Clean Target ==================================== 
+	-->
+	<!--
+	 Delete the previous files from directories, to rebuild the complete products. 
+	-->
+	<target description="Delete the directories with generated products ." name="clean">
+		<delete dir="${build.dir}"/>
+		<delete dir="${doc.dir}"/>
+	</target>
+	<!--
+	 ==================== Compile Target ==================================== 
+	-->
+	<target name="compile" depends="clean, prepare" description="Compile the full source files.">
+		<javac encoding="UTF-8" srcdir="${src.dir}" destdir="${build.dir}" source="1.8" target="1.8" includeantruntime="false">
+			<classpath refid="compile.classpath"/>
+		</javac>
+	</target>
+	<!--	
+	 ==================== Application Target ==================================== 
+	-->
+	<target name="javadoc" depends="clean, prepare, compile" description="Generate the documentation.">
+		<javadoc destdir="${doc.dir}" packagenames="*.*"
+					author="false" private="true" version="true" windowtitle="Simple Documentation">
+					<packageset dir="${src.dir}/main/java/" />
+		</javadoc>
+	</target>
+</project>
