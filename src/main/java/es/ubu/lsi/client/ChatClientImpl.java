@@ -12,7 +12,7 @@ import es.ubu.lsi.common.ChatMessage.MessageType;
 
 public class ChatClientImpl implements ChatClient {
 
-	private static int id = -1;
+	// private int id = -1;
 	private String server;
 	private String username;
 	private int port;
@@ -25,7 +25,9 @@ public class ChatClientImpl implements ChatClient {
 	Socket socket = null;
 
 	public ChatClientImpl(String server, int port, String username) {
-		this.idCliente = id++;
+
+		// this.idCliente = id++;
+		this.idCliente = username.hashCode();
 		this.server = server;
 		this.port = port;
 		this.username = username;
@@ -57,10 +59,8 @@ public class ChatClientImpl implements ChatClient {
 
 		try {
 			ChatMessage message = new ChatMessage(idCliente, MessageType.MESSAGE, username);
-			// Pasamos el nombre de usuario
-			//out.writeObject(username);
 			out.writeObject(message);
-			
+
 		} catch (IOException e) {
 			System.out.println("Error al enviar username");
 			carryOn = false;
@@ -77,7 +77,6 @@ public class ChatClientImpl implements ChatClient {
 		}
 	}
 
-	// TODO Comentar
 	public void disconnect() {
 		try {
 			in.close();
@@ -88,10 +87,6 @@ public class ChatClientImpl implements ChatClient {
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-	}
-
-	public Integer getId() {
-		return idCliente;
 	}
 
 	public class ChatClientListener implements Runnable {
@@ -139,6 +134,7 @@ public class ChatClientImpl implements ChatClient {
 		System.out.println("------------- CHAT -------------");
 
 		cliente = new ChatClientImpl(server, 1500, nick);
+		System.out.println("IS SEGUN EL CLIENTE: " + cliente.idCliente);
 		cliente.start();
 		System.out.print("> ");
 
@@ -154,22 +150,22 @@ public class ChatClientImpl implements ChatClient {
 
 				String[] command = parseMensajeToCommand(mensaje);
 
+				// TODO: Añadir UNBAN si es necesario
+				// No se si hay que hacerlo o no. Mirar enunciado.
 				switch (command[0]) {
 				case "BAN":
-					// TODO Ban a un usuario suponiendo que el mensaje sea de
-					// tipo ban, el mensaje será el usuario baneado.
-					cliente.sendMessage(new ChatMessage(cliente.id, ChatMessage.MessageType.BAN, command[1]));
+					cliente.sendMessage(new ChatMessage(cliente.idCliente, ChatMessage.MessageType.BAN, command[1]));
 					break;
 				case "LOGOUT":
-					cliente.sendMessage(new ChatMessage(cliente.id, ChatMessage.MessageType.LOGOUT, ""));
+					cliente.sendMessage(new ChatMessage(cliente.idCliente, ChatMessage.MessageType.LOGOUT, ""));
 					online = false;
 					cliente.disconnect();
 					break;
 				default:
-					cliente.sendMessage(new ChatMessage(cliente.id, ChatMessage.MessageType.MESSAGE, mensaje));
+					cliente.sendMessage(new ChatMessage(cliente.idCliente, ChatMessage.MessageType.MESSAGE, mensaje));
 				}
 			} catch (Exception e) {
-				// TODO: handle exception
+				e.printStackTrace();
 			}
 
 		}
@@ -181,7 +177,7 @@ public class ChatClientImpl implements ChatClient {
 	 * 
 	 * @param message
 	 * @return String[] en el que el primer valor es el comando, y el segundo el
-	 *         mesaje.
+	 *         mensaje.
 	 */
 	private static String[] parseMensajeToCommand(String message) {
 		return message.split(" ", 2);
